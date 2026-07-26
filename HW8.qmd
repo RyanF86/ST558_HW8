@@ -19,7 +19,7 @@ library(lubridate)
 library(tidymodels)
 library(broom)
 library(ggplot2)
-
+library(tree)
 ```
 
 Reading in the Seoul Bike Data that we will be exploring.
@@ -548,3 +548,168 @@ final_coefficients
 ```
 
 # Continuing for HW #8
+
+- We will reuse the first recipe `recipe1` from before.  To recap, here's what it contained:
+
+```{r}
+recipe1
+```
+### Create a Tuned LASSO Model
+
+- Let's use the same recipe for a tuned LASSO model
+
+```{r}
+# First specify the model
+LASSO_spec <- linear_reg(penalty = tune(), mixture = 1) |> # tuning on the penalty parameter
+  set_engine("glmnet")
+```
+
+```{r}
+# Next create our workflow
+LASSO_wkf <- workflow() |>
+  add_recipe(recipe1) |>
+  add_model(LASSO_spec)
+LASSO_wkf
+```
+
+```{r}
+# Fit the model with tune_grid() and grid_regular
+
+LASSO_grid <- LASSO_wkf |>
+  tune_grid(resamples = bike_10_fold,
+            grid = grid_regular(penalty(), levels = 200), # this represents 200 separate 10-fold LASSO models, one for each level of penalty()
+            save_workflow = TRUE) 
+```
+
+```{r}
+# Review the metrics of the tuned fits, sorted by mean RMSE
+LASSO_grid |>
+  collect_metrics() |>
+  filter(.metric == "rmse") |>
+  arrange(mean)
+```
+
+- For all tuned fits, mean RMSE is the same number.  We should try tuning again to a wider range of values for penalty() so that we can observe its effect on mean RMSE and make an informed selection of best fit.
+
+```{r}
+# Fit the model with tune_grid() and grid_regular
+LASSO_grid <- LASSO_wkf |>
+  tune_grid(resamples = bike_10_fold,
+            grid = grid_regular(penalty(range = c(-10, 5)), levels = 200), # Specifying 200 values from -10 to 5 (log scale)
+            save_workflow = TRUE) 
+```
+```{r}
+# plot the mean RMSE as a function of penalty
+LASSO_grid |>
+  collect_metrics() |>
+  filter(.metric == "rmse") |>
+  ggplot(aes(penalty, mean, color = .metric)) +
+  geom_line() +
+  scale_x_log10() # log scale for x
+```
+
+```{r}
+# Review the metrics of the tuned fits, sorted by mean RMSE
+LASSO_grid |>
+  collect_metrics() |>
+  filter(.metric == "rmse") |>
+  arrange(mean)
+```
+
+- We successfully found a better fit when the range of `penalty()` was extended.
+
+- Now select the best fit and finalize workflow
+
+```{r}
+# Select best fit
+LASSO_best <- LASSO_grid |>
+  select_best(metric = "rmse")
+LASSO_best
+```
+
+```{r}
+# Finalize workflow
+LASSO_wkf |>
+  finalize_workflow(LASSO_best)
+```
+
+```{r}
+# Fit  to the entire training set and see the model fit
+LASSO_final <- LASSO_wkf |>
+  finalize_workflow(LASSO_best) |>
+  fit(bike_train)
+tidy(LASSO_final)
+```
+
+- Note: with the penalty at 48.24, predictors dwpt and vis drop out from the LASSO model fit
+
+### Create a Tuned Regression Tree Model
+
+- Let's use the same recipe for a tuned regression tree model
+
+```{r}
+# First specify the model
+RegTree_spec <- decision_tree(tree_depth = tune(), # tune tree depth parameter
+                          min_n = 20, # set minimum node size 
+                          cost_complexity = tune()) |> # tune cost complexity parameter
+  set_engine("rpart") |>
+  set_mode("regression")
+```
+
+```{r}
+# Next create our workflow
+RegTree_wkf <- workflow() |>
+  add_recipe(recipe1) |>
+  add_model(RegTree_spec)
+RegTree_wkf
+```
+
+```{r}
+# Fit the model with tune_grid() and grid_regular
+RegTree_grid <- RegTree_wkf |>
+  tune_grid(resamples = bike_10_fold,
+            grid = grid_regular(cost_complexity(), tree_depth(), levels = c(10, 5)), # tuning 10 levels of cost_complexity and 5 levels of tree_depth
+            save_workflow = TRUE) 
+```
+
+```{r}
+# Review the metrics of the tuned fits, sorted by mean RMSE
+RegTree_grid |>
+  collect_metrics() |>
+  filter(.metric == "rmse") |>
+  arrange(mean)
+```
+
+```{r}
+# Select best fit
+RegTree_best <- select_best(RegTree_grid, metric = "rmse")
+RegTree_best
+```
+
+```{r}
+# Finalize workflow
+RegTree_wkf |>
+  finalize_workflow(RegTree_best)
+```
+
+
+
+```{r}
+# Fit  to the entire training set and see the model fit
+RegTree_final <- RegTree_wkf |>
+  finalize_workflow(RegTree_best) |>
+  fit(bike_train)
+RegTree_final
+```
+
+### Create a Tuned Bagged Tree Model
+
+
+
+### Create a Tuned Random Forest Model
+
+### Compare all Final Models
+
+### Extract the Fianl Mdoel Fits
+
+### Fit Overall Best Model to the Entire Data Set
