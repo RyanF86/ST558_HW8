@@ -20,6 +20,7 @@ library(tidymodels)
 library(broom)
 library(ggplot2)
 library(tree)
+library(baguette)
 ```
 
 Reading in the Seoul Bike Data that we will be exploring.
@@ -704,12 +705,166 @@ RegTree_final
 
 ### Create a Tuned Bagged Tree Model
 
+- Let's use the same recipe for a tuned bagged tree model
 
+```{r}
+# First specify the model
+BaggedTree_spec <- bag_tree(tree_depth = 5, # set tree depth at 5
+                            min_n = 10, # set minimum n at 10
+                            cost_complexity = tune()) |> # tune on cost complexity
+  set_engine("rpart") |>
+  set_mode("regression")
+```
+
+```{r}
+# Next create our workflow
+BaggedTree_wkf <- workflow() |>
+  add_recipe(recipe1) |>
+  add_model(BaggedTree_spec)
+BaggedTree_wkf
+```
+
+```{r}
+# Fit the model with tune_grid() and grid_regular
+BaggedTree_grid <- BaggedTree_wkf |>
+  tune_grid(resamples = bike_10_fold,
+            grid = grid_regular(cost_complexity(), levels = 15), # tuning 15 levels of cost_complexity
+            save_workflow = TRUE) 
+```
+
+```{r}
+# Review the metrics of the tuned fits, sorted by mean RMSE
+BaggedTree_grid |>
+  collect_metrics() |>
+  filter(.metric == "rmse") |>
+  arrange(mean)
+```
+
+```{r}
+# Select best fit
+BaggedTree_best <- select_best(BaggedTree_grid, metric = "rmse")
+BaggedTree_best
+```
+
+```{r}
+# Finalize workflow
+BaggedTree_wkf |>
+  finalize_workflow(BaggedTree_best)
+```
+
+```{r}
+# Fit  to the entire training set and see the model fit
+BaggedTree_final <- BaggedTree_wkf |>
+  finalize_workflow(BaggedTree_best) |>
+  fit(bike_train)
+BaggedTree_final
+```
 
 ### Create a Tuned Random Forest Model
 
+- Let's use the same recipe for a tuned random forest model
+
+```{r}
+# First specify the model
+RandForest_spec <- rand_forest(mtry = tune()) |> # tune on mtry parameter
+  set_engine("ranger") |>
+  set_mode("regression")
+```
+
+```{r}
+# Next create our workflow
+RandForest_wkf <- workflow() |>
+  add_recipe(recipe1) |>
+  add_model(RandForest_spec)
+RandForest_wkf
+```
+
+```{r}
+# Fit the model with tune_grid() 
+RandForest_grid <- RandForest_wkf |>
+  tune_grid(resamples = bike_10_fold,
+            grid = tibble(mtry = 1:11), # tuning 1:11 for mtry
+            save_workflow = TRUE) 
+```
+
+```{r}
+# Review the metrics of the tuned fits, sorted by mean RMSE
+RandForest_grid |>
+  collect_metrics() |>
+  filter(.metric == "rmse") |>
+  arrange(mean)
+```
+
+```{r}
+# Select best fit
+RandForest_best <- select_best(RandForest_grid, metric = "rmse")
+RandForest_best
+```
+
+```{r}
+# Finalize workflow
+RandForest_wkf |>
+  finalize_workflow(RandForest_best)
+```
+
+```{r}
+# Fit  to the entire training set and see the model fit
+RandForest_final <- RandForest_wkf |>
+  finalize_workflow(RandForest_best) |>
+  fit(bike_train)
+RandForest_final
+```
+
 ### Compare all Final Models
 
-### Extract the Fianl Mdoel Fits
+- Let's do the last fit for each final model.  Also include the best MLR from HW # 7 ('workflow3')
+
+```{r}
+MLR3_final_fit <- workflow3 |>
+  last_fit(bike_split, metrics = metric_set(rmse, mae)) 
+
+LASSO_final_fit <- LASSO_wkf |>
+  finalize_workflow(LASSO_best) |>
+  last_fit(bike_split, metrics = metric_set(rmse, mae)) 
+
+RegTree_final_fit <- RegTree_wkf |>
+  finalize_workflow(RegTree_best) |>
+  last_fit(bike_split, metrics = metric_set(rmse, mae)) 
+
+BaggedTree_final_fit <- BaggedTree_wkf |>
+  finalize_workflow(BaggedTree_best) |>
+  last_fit(bike_split, metrics = metric_set(rmse, mae)) 
+
+RandForest_final_fit <- RandForest_wkf |>
+  finalize_workflow(RandForest_best) |>
+  last_fit(bike_split, metrics = metric_set(rmse, mae)) 
+
+```
+
+- 
+
+```{r}
+bind_rows(
+  `MLR #3` = collect_metrics(MLR3_final_fit),
+  LASSO = collect_metrics(LASSO_final_fit),
+  `Regression Tree` = collect_metrics(RegTree_final_fit),
+  `Bagged Tree` = collect_metrics(BaggedTree_final_fit),
+  `Random Forest` = collect_metrics(RandForest_final_fit),
+  .id = "Model") |>
+  filter(.metric %in% c("rmse", "mae")) |> # keeping just rmse and mae
+  pivot_wider(id_cols = Model, names_from = .metric, values_from = .estimate) # pivot to one row per model
+
+```
+- Observations on final model comparisons:
+
+ - The best model (lowest RMSE and MAE) is the tuned random forest.
+ 
+ - MLR #3 also performed well.  This model included select interaction effects (seasons and holiday, seasons and temp, temp and rainfall) as well as quadratic terms for each numeric variable
+ 
+ - The LASSO model performed much worse than the others.  However, keep in mind that this model was much simpler as it did not include any interaction or quadratic terms.
+
+### Extract the Final Model Fits
+
+
 
 ### Fit Overall Best Model to the Entire Data Set
