@@ -7,7 +7,7 @@ editor: visual
 
 # Prior Content from HW #7:
 
-#### (Scroll down further for HW #8)
+#### [Click here to jump down to HW #8](#hw8)
 
 Loading any libraries needed for the assignment
 
@@ -549,7 +549,7 @@ final_coefficients <- workflow2 |>
 final_coefficients
 ```
 
-# Continuing for HW #8
+# Continuing for HW #8 {#hw8}
 
 - We will reuse the first recipe `recipe1` from before. To recap, here's what it contained:
 
@@ -873,13 +873,11 @@ bind_rows(
 MLR3_final_fit |> extract_fit_parsnip() |> tidy()
 ```
 
-
 - LASSO final fit coefficients
 
 ```{r}
 LASSO_final_fit |> extract_fit_parsnip() |> tidy()
 ```
-
 
 - Regression Tree final fit plot
 
@@ -920,4 +918,3 @@ final_model <- RandForest_wkf |>
   fit(daily_bike_data)
 final_model
 ```
-
