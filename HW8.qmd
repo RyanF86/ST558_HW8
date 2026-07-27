@@ -867,19 +867,24 @@ bind_rows(
 
 ### Extract the Final Model Fits
 
-- MLR #3 final fit coefficients
+#### MLR #3 final fit coefficients
 
 ```{r}
 MLR3_final_fit |> extract_fit_parsnip() |> tidy()
 ```
+ - An analysis of our p-values show that some of coefficients are not statistically significant from zero. 
+ 
+ - With such large standard error values for most coefficients, we are interested in ways that we could lower the standard error and have more significance in some of our variables.
 
-- LASSO final fit coefficients
+#### LASSO final fit coefficients
 
 ```{r}
 LASSO_final_fit |> extract_fit_parsnip() |> tidy()
 ```
 
-- Regression Tree final fit plot
+- Visibility and Dew Point variables were removed for the best LASSO model.
+
+#### Regression Tree final fit plot
 
 ```{r}
 #| fig-width: 6 # settings for a clean high-res render
@@ -888,11 +893,13 @@ LASSO_final_fit |> extract_fit_parsnip() |> tidy()
 
 extract_workflow(RegTree_final_fit) |>
   extract_fit_engine() |>
-  rpart.plot::rpart.plot(roundint = FALSE, digits = 4) # rounding to 4 sig figs
+  rpart.plot::rpart.plot(roundint = FALSE, 
+                         digits = 4,
+                         main = "Bike Data Regression Tree Plot") # rounding to 4 sig figs
 
 ```
 
-- Bagged Tree final fit variable importance plot
+#### Bagged Tree final fit variable importance plot
 
 ```{r}
 extract_fit_engine(BaggedTree_final_fit)$imp |>
@@ -904,7 +911,13 @@ extract_fit_engine(BaggedTree_final_fit)$imp |>
   theme(plot.title = element_text(hjust = 0.5)) # center title
 ```
 
-- Random Forest final fit variable importance plot
+- The first most important variables: temperature, dew point, solar radiation, Season_Winter dummy variable, and humidity
+
+- Temperature and solar radiation also had higher magnitude correlation with rented bike count, so this is not surprising to us. 
+
+- Interestingly to us, Day Type seems to have little importance.
+
+#### Random Forest final fit variable importance plot
 
 ```{r}
 RandForest_final_fit |>
@@ -914,11 +927,17 @@ RandForest_final_fit |>
   ggplot(aes(x = reorder(term, -value), y = value)) + # sorts order of term by -value (to match prior importance plot)
   geom_bar(stat ="identity") +
   coord_flip() +
-  labs(title = "Bagged Tree Model: Variable Importance",
+  labs(title = "Random Forest Model: Variable Importance",
        x = "term") + # needs renaming after reorder()
   theme(plot.title = element_text(hjust = 0.5)) # center title  
 
 ```
+
+ - The top five variable importance: temperature, solar radiation, Season Winter dummy variable, rain, and dew point.
+ 
+ - Similar most important variables to the bag tree model, only swapping out humidity and rain.
+ 
+ - The most striking difference between the two graphs is how much more importance temperature has for the `Random Forest` model compared to the other variables. In the `Bagged Tree` model, temperature was the most important as well, but the next three variables by importance had similar magnitudes in importance. In `Random Forest` temperature is shown to have vastly larger importance.
 
 ### Fit Overall Best Model to the Entire Data Set
 
@@ -928,3 +947,5 @@ final_model <- RandForest_wkf |>
   fit(daily_bike_data)
 final_model
 ```
+
+The final r-squared value is 0.9227, indicating a very strong model.
