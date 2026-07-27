@@ -768,7 +768,7 @@ BaggedTree_final
 ```{r}
 # First specify the model
 RandForest_spec <- rand_forest(mtry = tune()) |> # tune on mtry parameter
-  set_engine("ranger") |>
+  set_engine("ranger", importance = "impurity") |>
   set_mode("regression")
 ```
 
@@ -907,6 +907,16 @@ extract_fit_engine(BaggedTree_final_fit)$imp |>
 - Random Forest final fit variable importance plot
 
 ```{r}
+RandForest_final_fit |>
+  extract_fit_engine() |>
+  ranger::importance() |> # extracts variable importance from a ranger model
+  enframe(name = "term") |> # converts named vector into a data frame, changing name in to "term"
+  ggplot(aes(x = reorder(term, -value), y = value)) + # sorts order of term by -value (to match prior importance plot)
+  geom_bar(stat ="identity") +
+  coord_flip() +
+  labs(title = "Bagged Tree Model: Variable Importance",
+       x = "term") + # needs renaming after reorder()
+  theme(plot.title = element_text(hjust = 0.5)) # center title  
 
 ```
 

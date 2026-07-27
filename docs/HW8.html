@@ -321,7 +321,7 @@ dbl (10): Rented Bike Count, Hour, Temperature(°C), Humidity(%), Wind speed ...
   ..   Holiday = col_character(),
   ..   `Functioning Day` = col_character()
   .. )
- - attr(*, "problems")=&lt;pointer: 0x000001d0238ff410&gt; </code></pre>
+ - attr(*, "problems")=&lt;pointer: 0x00000245f1be73f0&gt; </code></pre>
 </div>
 </div>
 <div class="cell">
@@ -1268,7 +1268,7 @@ Computational engine: glmnet </code></pre>
 <pre><code>There were issues with some computations   A: x79</code></pre>
 </div>
 <div class="cell-output cell-output-stderr">
-<pre><code>There were issues with some computations   A: x110</code></pre>
+<pre><code>There were issues with some computations   A: x126</code></pre>
 </div>
 <div class="cell-output cell-output-stderr">
 <pre><code>There were issues with some computations   A: x158
@@ -1788,7 +1788,7 @@ Variable importance scores include:
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb176"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb176-1"><a href="#cb176-1" aria-hidden="true" tabindex="-1"></a><span class="co"># First specify the model</span></span>
 <span id="cb176-2"><a href="#cb176-2" aria-hidden="true" tabindex="-1"></a>RandForest_spec <span class="ot">&lt;-</span> <span class="fu">rand_forest</span>(<span class="at">mtry =</span> <span class="fu">tune</span>()) <span class="sc">|&gt;</span> <span class="co"># tune on mtry parameter</span></span>
-<span id="cb176-3"><a href="#cb176-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"ranger"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb176-3"><a href="#cb176-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"ranger"</span>, <span class="at">importance =</span> <span class="st">"impurity"</span>) <span class="sc">|&gt;</span></span>
 <span id="cb176-4"><a href="#cb176-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_mode</span>(<span class="st">"regression"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
@@ -1816,6 +1816,9 @@ Random Forest Model Specification (regression)
 
 Main Arguments:
   mtry = tune()
+
+Engine-Specific Arguments:
+  importance = impurity
 
 Computational engine: ranger </code></pre>
 </div>
@@ -1889,6 +1892,9 @@ Random Forest Model Specification (regression)
 Main Arguments:
   mtry = 10
 
+Engine-Specific Arguments:
+  importance = impurity
+
 Computational engine: ranger </code></pre>
 </div>
 </div>
@@ -1916,7 +1922,7 @@ Model: rand_forest()
 Ranger result
 
 Call:
- ranger::ranger(x = maybe_data_frame(x), y = y, mtry = min_cols(~10L,      x), num.threads = 1, verbose = FALSE, seed = sample.int(10^5,      1)) 
+ ranger::ranger(x = maybe_data_frame(x), y = y, mtry = min_cols(~10L,      x), importance = ~"impurity", num.threads = 1, verbose = FALSE,      seed = sample.int(10^5, 1)) 
 
 Type:                             Regression 
 Number of trees:                  500 
@@ -1924,7 +1930,7 @@ Sample size:                      263
 Number of independent variables:  13 
 Mtry:                             10 
 Target node size:                 5 
-Variable importance mode:         none 
+Variable importance mode:         impurity 
 Splitrule:                        variance 
 OOB prediction error (MSE):       8373578 
 R squared (OOB):                  0.914088 </code></pre>
@@ -2073,14 +2079,33 @@ R squared (OOB):                  0.914088 </code></pre>
 <ul>
 <li>Random Forest final fit variable importance plot</li>
 </ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb198"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb198-1"><a href="#cb198-1" aria-hidden="true" tabindex="-1"></a>RandForest_final_fit <span class="sc">|&gt;</span></span>
+<span id="cb198-2"><a href="#cb198-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">extract_fit_engine</span>() <span class="sc">|&gt;</span></span>
+<span id="cb198-3"><a href="#cb198-3" aria-hidden="true" tabindex="-1"></a>  ranger<span class="sc">::</span><span class="fu">importance</span>() <span class="sc">|&gt;</span> <span class="co"># extracts variable importance from a ranger model</span></span>
+<span id="cb198-4"><a href="#cb198-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">enframe</span>(<span class="at">name =</span> <span class="st">"term"</span>) <span class="sc">|&gt;</span> <span class="co"># converts named vector into a data frame, changing name in to "term"</span></span>
+<span id="cb198-5"><a href="#cb198-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">reorder</span>(term, <span class="sc">-</span>value), <span class="at">y =</span> value)) <span class="sc">+</span> <span class="co"># sorts order of term by -value (to match prior importance plot)</span></span>
+<span id="cb198-6"><a href="#cb198-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span><span class="st">"identity"</span>) <span class="sc">+</span></span>
+<span id="cb198-7"><a href="#cb198-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>() <span class="sc">+</span></span>
+<span id="cb198-8"><a href="#cb198-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Bagged Tree Model: Variable Importance"</span>,</span>
+<span id="cb198-9"><a href="#cb198-9" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">"term"</span>) <span class="sc">+</span> <span class="co"># needs renaming after reorder()</span></span>
+<span id="cb198-10"><a href="#cb198-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>)) <span class="co"># center title  </span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="HW8_files/figure-html/unnamed-chunk-79-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
 </section>
 <section id="fit-overall-best-model-to-the-entire-data-set" class="level3">
 <h3 class="anchored" data-anchor-id="fit-overall-best-model-to-the-entire-data-set">Fit Overall Best Model to the Entire Data Set</h3>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb198"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb198-1"><a href="#cb198-1" aria-hidden="true" tabindex="-1"></a>final_model <span class="ot">&lt;-</span> RandForest_wkf <span class="sc">|&gt;</span></span>
-<span id="cb198-2"><a href="#cb198-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">finalize_workflow</span>(RandForest_best) <span class="sc">|&gt;</span></span>
-<span id="cb198-3"><a href="#cb198-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(daily_bike_data)</span>
-<span id="cb198-4"><a href="#cb198-4" aria-hidden="true" tabindex="-1"></a>final_model</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb199"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb199-1"><a href="#cb199-1" aria-hidden="true" tabindex="-1"></a>final_model <span class="ot">&lt;-</span> RandForest_wkf <span class="sc">|&gt;</span></span>
+<span id="cb199-2"><a href="#cb199-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">finalize_workflow</span>(RandForest_best) <span class="sc">|&gt;</span></span>
+<span id="cb199-3"><a href="#cb199-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fit</span>(daily_bike_data)</span>
+<span id="cb199-4"><a href="#cb199-4" aria-hidden="true" tabindex="-1"></a>final_model</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>══ Workflow [trained] ══════════════════════════════════════════════════════════
 Preprocessor: Recipe
@@ -2099,7 +2124,7 @@ Model: rand_forest()
 Ranger result
 
 Call:
- ranger::ranger(x = maybe_data_frame(x), y = y, mtry = min_cols(~10L,      x), num.threads = 1, verbose = FALSE, seed = sample.int(10^5,      1)) 
+ ranger::ranger(x = maybe_data_frame(x), y = y, mtry = min_cols(~10L,      x), importance = ~"impurity", num.threads = 1, verbose = FALSE,      seed = sample.int(10^5, 1)) 
 
 Type:                             Regression 
 Number of trees:                  500 
@@ -2107,7 +2132,7 @@ Sample size:                      353
 Number of independent variables:  13 
 Mtry:                             10 
 Target node size:                 5 
-Variable importance mode:         none 
+Variable importance mode:         impurity 
 Splitrule:                        variance 
 OOB prediction error (MSE):       7634224 
 R squared (OOB):                  0.9226892 </code></pre>
